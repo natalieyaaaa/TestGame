@@ -12,7 +12,7 @@ struct ContentView: View {
     
     @StateObject var vm = ViewModel()
     @State var scene = SKScene(fileNamed: "MyScene") as? GameScene
-        
+            
     var body: some View {
         VStack {
             if let scene = scene {
@@ -44,7 +44,9 @@ struct ContentView: View {
                     
                     Button {
                         withAnimation {
-                            vm.startGame()
+                            vm.timer?.invalidate()
+                            vm.startTimer()
+                            scene?.isPaused = false
                         }
                     } label: {
                         Text("Start")
@@ -52,7 +54,8 @@ struct ContentView: View {
                             .padding()
                             .background(Color.blue)
                             .cornerRadius(12)
-                    }
+                    }.disabled(vm.buttonDisabled)
+                        .grayscale(vm.buttonDisabled ? 1 : 0)
                 }
             }
         }
@@ -63,6 +66,7 @@ struct ContentView: View {
                     scene = SKScene(fileNamed: "MyScene") as? GameScene
                     scene?.isPaused = true
                     vm.timeRemaining = 30
+                    vm.webURL = nil
                 } label: {
                     Text("<- Back")
                         .foregroundStyle(.red)
@@ -79,9 +83,14 @@ struct ContentView: View {
             }.onAppear {
                 scene = nil
             }
+            .onDisappear {
+                withAnimation {
+                    vm.buttonDisabled = false
+                }
+            }
         }
         .onChange(of: scene?.lose) { newValue in
-            
+            vm.buttonDisabled = true
             guard newValue == true else {return}
             vm.fetchURLs(lose: true)
             

@@ -16,6 +16,9 @@ final class ViewModel: ObservableObject {
     @Published var timeRemaining = 30
     @Published var timer: Timer?
     
+    @Published var buttonDisabled = false
+
+    
     var scene = SKScene(fileNamed: "MyScene") as? GameScene
     
     func startTimer() {
@@ -30,18 +33,12 @@ final class ViewModel: ObservableObject {
                 
                 self.timer?.invalidate()
                 self.scene?.isPaused = true
+                self.buttonDisabled = true
                 self.fetchURLs(lose: false)
             }
         }
     }
 
-    func startGame() {
-        timer?.invalidate()
-        startTimer()
-        scene?.isPaused = false
-    }
-    
-    
     
     func serverRequest() {
         guard UserDefaults.standard.string(forKey: "savedURLs") == nil else { return }

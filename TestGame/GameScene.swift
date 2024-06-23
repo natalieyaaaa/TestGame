@@ -17,47 +17,49 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     enum PhysicsCategory: UInt32 {
         case ball = 0b1
         case platform = 0b10
+        case bomb = 0b100
     }
     
     
     override func didMove(to view: SKView) {
-            backgroundColor = .clear
-            
-            var isSE = UIScreen.main.bounds.height < 680
-            size = CGSize(width: isSE ? UIScreen.main.bounds.width + 20: 400, height: isSE ? 600: 700)
-            scaleMode = .fill
-            
+        backgroundColor = .clear
+        
+        let isSE = UIScreen.main.bounds.height < 680
+        size = CGSize(width: isSE ? UIScreen.main.bounds.width + 20: 400, height: isSE ? 600: 700)
+        scaleMode = .fill
+        
         let frameWithExtendedTop = CGRect(
-                    x: self.frame.origin.x,
-                    y: self.frame.origin.y,
-                    width: self.frame.size.width,
-                    height: self.frame.size.height + 200
-                )
+            x: self.frame.origin.x,
+            y: self.frame.origin.y,
+            width: self.frame.size.width,
+            height: self.frame.size.height + 200
+        )
         
         self.physicsBody = SKPhysicsBody(edgeLoopFrom: frameWithExtendedTop)
         
-            setUpView()
+        setUpView()
         
         self.isPaused = true
-        }
+    }
     
     override func update(_ currentTime: TimeInterval) {
-            super.update(currentTime)
-            
-            if let accelerometerData = motionManager.accelerometerData {
-                physicsWorld.gravity = CGVector(dx: accelerometerData.acceleration.x * 9.8, dy: accelerometerData.acceleration.y * 9.8)
-            }
+        super.update(currentTime)
+        
+        if let accelerometerData = motionManager.accelerometerData {
+            physicsWorld.gravity = CGVector(dx: accelerometerData.acceleration.x * 9.8, dy: accelerometerData.acceleration.y * 9.8)
+        }
         
         checkBallOutOfBounds()
-            
-        }
+        
+    }
     
     func checkBallOutOfBounds() {
-           if !self.frame.contains(ball.position) {
-               self.removeAllActions()
-               lose = true
-           }
-       }
+        if !self.frame.contains(ball.position) {
+            self.removeAllActions()
+            self.isPaused = true
+            lose = true
+        }
+    }
     
     func setUpView() {
         physicsWorld.contactDelegate = self
@@ -79,6 +81,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
         
         copyAnimatedPlatform()
+        placeBombs()
     }
     
     func copyAnimatedPlatform() {
@@ -86,11 +89,20 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         for index in 1...40 {
             let newNode = referencNode.copy() as! SKNode
+            
             newNode.position = .init(x: CGFloat.random(in: 0...self.size.width), y: referencNode.position.y - CGFloat(80 * index))
             self.addChild(newNode)
         }
     }
-     
+    
+    func placeBombs() {
+           guard let referenceNode = self.children.first(where: { $0.name == "bomb" }) else { return }
+           for index in 1...20 {
+               let newNode = referenceNode.copy() as! SKNode
+               newNode.position = .init(x: CGFloat.random(in: 0...self.size.width), y: referenceNode.position.y - CGFloat(320 * index))
+               self.addChild(newNode)
+           }
+       }
     
     func addPlatformPhysicsBody(to sprite: SKSpriteNode) {
         if let texture = sprite.texture {
@@ -107,8 +119,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             
             sprite.physicsBody?.contactTestBitMask = PhysicsCategory.platform.rawValue
             sprite.physicsBody?.collisionBitMask = PhysicsCategory.platform.rawValue
-        } else {
+            
+        } else if sprite.name == "mainPlatform" {
             sprite.physicsBody?.categoryBitMask = PhysicsCategory.platform.rawValue
+            
+            sprite.physicsBody?.contactTestBitMask = PhysicsCategory.ball.rawValue
+            sprite.physicsBody?.collisionBitMask = PhysicsCategory.ball.rawValue
+            
+        } else if sprite.name == "bomb" {
+            sprite.physicsBody?.categoryBitMask = PhysicsCategory.bomb.rawValue
             
             sprite.physicsBody?.contactTestBitMask = PhysicsCategory.ball.rawValue
             sprite.physicsBody?.collisionBitMask = PhysicsCategory.ball.rawValue
@@ -119,16 +138,20 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
         
     }
-//    
-//    func didBegin(_ contact: SKPhysicsContact) {
-//            
-//            var firstBody = contact.bodyA
-//            var secondBody = contact.bodyB
-//            
-//            
-//            if firstBody.categoryBitMask == PhysicsCategory.ball.rawValue && secondBody.categoryBitMask == PhysicsCategory.platform.rawValue {
-//
-//            }
-//        }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        
+        let firstBody = contact.bodyA
+        let secondBody = contact.bodyB
+        
+        
+        if firstBody.categoryBitMask == PhysicsCategory.ball.rawValue && secondBody.categoryBitMask == PhysicsCategory.bomb.rawValue {
+            self.isPaused = true
+            lose = true
+        } else if firstBody.categoryBitMask == PhysicsCategory.bomb.rawValue && secondBody.categoryBitMask == PhysicsCategory.ball.rawValue {
+            self.isPaused = true
+            lose = true
+        }
+    }
     
 }
